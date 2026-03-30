@@ -8,7 +8,7 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        _client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        _client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     return _client
 
 
@@ -22,10 +22,10 @@ Vrať POUZE validní JSON objekt s těmito klíči (bez markdown code bloků):
 - "rozhodnuti": seznam přijatých rozhodnutí (strings)"""
 
 
-def summarize(transcript: str) -> dict:
+async def summarize(transcript: str) -> dict:
     """Summarize a meeting transcript using Claude API. Returns structured dict."""
     client = _get_client()
-    message = client.messages.create(
+    message = await client.messages.create(
         model="claude-sonnet-4-6",
         max_tokens=2048,
         system=SYSTEM_PROMPT,
