@@ -1,0 +1,24 @@
+# Environment
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+
+# Uploads (temporary audio files)
+uploads/
+
+# Whisper model cache
+~/.cache/whisper/
+
+# IDE
+.idea/
+.vscode/
+*.swp
