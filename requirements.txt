@@ -1,6 +1,5 @@
 fastapi
 uvicorn[standard]
-openai-whisper
 groq
 python-multipart
 jinja2
