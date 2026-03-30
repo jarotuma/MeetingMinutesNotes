@@ -1,6 +1,6 @@
 import json
 import os
-import anthropic
+from groq import AsyncGroq
 
 _client = None
 
@@ -8,7 +8,7 @@ _client = None
 def _get_client():
     global _client
     if _client is None:
-        _client = anthropic.AsyncAnthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        _client = AsyncGroq(api_key=os.environ["GROQ_API_KEY"])
     return _client
 
 
@@ -23,18 +23,15 @@ Vrať POUZE validní JSON objekt s těmito klíči (bez markdown code bloků):
 
 
 async def summarize(transcript: str) -> dict:
-    """Summarize a meeting transcript using Claude API. Returns structured dict."""
+    """Summarize a meeting transcript using Groq API. Returns structured dict."""
     client = _get_client()
-    message = await client.messages.create(
-        model="claude-sonnet-4-6",
+    response = await client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
         max_tokens=2048,
-        system=SYSTEM_PROMPT,
+        response_format={"type": "json_object"},
         messages=[
-            {
-                "role": "user",
-                "content": f"Přepis schůzky:\n\n{transcript}",
-            }
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f"Přepis schůzky:\n\n{transcript}"},
         ],
     )
-    raw = message.content[0].text.strip()
-    return json.loads(raw)
+    return json.loads(response.choices[0].message.content)

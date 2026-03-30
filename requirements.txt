@@ -1,7 +1,7 @@
 fastapi
 uvicorn[standard]
 openai-whisper
-anthropic
+groq
 python-multipart
 jinja2
 python-dotenv
