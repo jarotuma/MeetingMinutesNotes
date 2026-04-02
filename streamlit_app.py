@@ -42,7 +42,7 @@ if uploaded_file:
         # --- Transkripce ---
         with st.spinner("Přepisuji nahrávku…"):
             transcription = client.audio.transcriptions.create(
-                file=(uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type),
+                file=(uploaded_file.name, uploaded_file.getvalue()),
                 model="whisper-large-v3-turbo",
                 response_format="text",
             )
