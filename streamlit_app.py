@@ -20,7 +20,7 @@ Vrať POUZE validní JSON objekt s těmito klíči (bez markdown code bloků):
   (kdo = "neuvedeno" pokud není jasné)
 - "rozhodnuti": seznam přijatých rozhodnutí (strings)"""
 
-GROQ_LIMIT_BYTES = 24 * 1024 * 1024  # 24 MB
+GROQ_LIMIT_BYTES = 23 * 1024 * 1024  # 23 MB (safe margin)
 
 
 def get_client():
@@ -31,17 +31,24 @@ def get_client():
     return Groq(api_key=api_key)
 
 
-def prepare_audio(file_bytes: bytes, filename: str) -> tuple[bytes, str]:
-    """Compress audio to mono MP3 64kbps if larger than Groq limit."""
-    if len(file_bytes) <= GROQ_LIMIT_BYTES:
-        return file_bytes, filename
+def audio_to_chunks(file_bytes: bytes, filename: str) -> list[tuple[bytes, str]]:
+    """Convert audio to mono 32kbps MP3 chunks each under GROQ_LIMIT_BYTES."""
     ext = filename.rsplit(".", 1)[-1].lower()
-    audio = AudioSegment.from_file(io.BytesIO(file_bytes), format=ext if ext != "mp4" else "mp4")
+    audio = AudioSegment.from_file(io.BytesIO(file_bytes), format=ext)
     audio = audio.set_channels(1).set_frame_rate(16000)
-    out = io.BytesIO()
-    audio.export(out, format="mp3", bitrate="64k")
-    compressed = out.getvalue()
-    return compressed, "audio_compressed.mp3"
+
+    # Estimate how many chunks we need based on duration
+    duration_ms = len(audio)
+    # 32kbps mono → ~240 kB/min → 23 MB ≈ 96 minutes per chunk
+    chunk_ms = 90 * 60 * 1000  # 90 minutes per chunk
+
+    chunks = []
+    for i, start in enumerate(range(0, duration_ms, chunk_ms)):
+        segment = audio[start : start + chunk_ms]
+        buf = io.BytesIO()
+        segment.export(buf, format="mp3", bitrate="32k")
+        chunks.append((buf.getvalue(), f"chunk_{i}.mp3"))
+    return chunks
 
 
 uploaded_file = st.file_uploader(
@@ -60,16 +67,19 @@ if uploaded_file:
         size_mb = len(file_bytes) / 1024 / 1024
 
         with st.spinner("Přepisuji nahrávku…"):
-            if size_mb > 24:
+            if size_mb > 5:
                 st.info(f"Soubor je {size_mb:.0f} MB – kompresuji před odesláním…")
             try:
-                audio_bytes, audio_name = prepare_audio(file_bytes, uploaded_file.name)
-                transcription = client.audio.transcriptions.create(
-                    file=(audio_name, audio_bytes),
-                    model="whisper-large-v3-turbo",
-                    response_format="text",
-                )
-                transcript = str(transcription).strip()
+                chunks = audio_to_chunks(file_bytes, uploaded_file.name)
+                parts = []
+                for audio_bytes, audio_name in chunks:
+                    result = client.audio.transcriptions.create(
+                        file=(audio_name, audio_bytes),
+                        model="whisper-large-v3-turbo",
+                        response_format="text",
+                    )
+                    parts.append(str(result).strip())
+                transcript = " ".join(parts)
             except Exception as e:
                 st.error(f"Chyba transkripce: {e}")
                 st.stop()
