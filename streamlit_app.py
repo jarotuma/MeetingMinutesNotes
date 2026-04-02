@@ -86,16 +86,22 @@ if uploaded_file:
 
         # --- Sumarizace ---
         with st.spinner("Sumarizuji obsah schůzky…"):
-            response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                max_tokens=2048,
-                response_format={"type": "json_object"},
-                messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": f"Přepis schůzky:\n\n{transcript}"},
-                ],
-            )
-            summary = json.loads(response.choices[0].message.content)
+            # Groq free tier: max ~6000 tokens input → trim long transcripts
+            trimmed = transcript[:24000]
+            try:
+                response = client.chat.completions.create(
+                    model="llama-3.3-70b-versatile",
+                    max_tokens=2048,
+                    response_format={"type": "json_object"},
+                    messages=[
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "user", "content": f"Přepis schůzky:\n\n{trimmed}"},
+                    ],
+                )
+                summary = json.loads(response.choices[0].message.content)
+            except Exception as e:
+                st.error(f"Chyba sumarizace: {e}")
+                st.stop()
 
         # --- Výsledky ---
         st.success("Hotovo!")
