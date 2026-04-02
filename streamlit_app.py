@@ -41,12 +41,16 @@ if uploaded_file:
 
         # --- Transkripce ---
         with st.spinner("Přepisuji nahrávku…"):
-            transcription = client.audio.transcriptions.create(
-                file=(uploaded_file.name, uploaded_file.getvalue()),
-                model="whisper-large-v3-turbo",
-                response_format="text",
-            )
-            transcript = str(transcription).strip()
+            try:
+                transcription = client.audio.transcriptions.create(
+                    file=(uploaded_file.name, uploaded_file.getvalue()),
+                    model="whisper-large-v3-turbo",
+                    response_format="text",
+                )
+                transcript = str(transcription).strip()
+            except Exception as e:
+                st.error(f"Chyba transkripce: {e}")
+                st.stop()
 
         # --- Sumarizace ---
         with st.spinner("Sumarizuji obsah schůzky…"):
